@@ -12,6 +12,7 @@
   "dependencies": {
     "@tailwindcss/cli": "^4.2.0",
     "@tailwindcss/vite": "^4.2.0",
+    "@vercel/speed-insights": "^2.0.0",
     "chart.js": "^4.5.1",
     "react": "^19.2.0",
     "react-chartjs-2": "^5.3.1",
