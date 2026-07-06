@@ -1,19 +1,54 @@
 const API_BASE_URL = 'http://localhost:5000/api';
 
+// A helper function to automatically add the auth token to requests
+const fetchWithAuth = async (url, options = {}) => {
+  const token = localStorage.getItem('accessToken');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, { ...options, headers });
+
+  if (!response.ok) {
+    // Try to parse the error message from the response body
+    const errorData = await response.json().catch(() => ({}));
+    const errorMessage = errorData.message || errorData.error || `HTTP error! status: ${response.status}`;
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
+};
+
 const apiClient = {
+  // Auth
+  login: async (credentials) => {
+    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to login');
+    }
+    return data;
+  },
   // Admin Stats
   getStats: async () => {
-    const res = await fetch(`${API_BASE_URL}/admin/stats`);
-    if (!res.ok) throw new Error('Failed to fetch stats');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/stats`);
+    return res;
   },
 
   // Sales Chart
   getSalesChart: async (period = '7d') => {
     const params = new URLSearchParams({ period });
-    const res = await fetch(`${API_BASE_URL}/admin/sales-chart?${params.toString()}`);
-    if (!res.ok) throw new Error('Failed to fetch sales chart');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/sales-chart?${params.toString()}`);
+    return res;
   },
 
   // Products
@@ -23,35 +58,30 @@ const apiClient = {
       const params = new URLSearchParams({ category });
       url += `?${params.toString()}`;
     }
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to fetch products');
-    return res.json();
+    const res = await fetchWithAuth(url);
+    return res;
   },
 
-  addProduct: async (productData) => {
-    const res = await fetch(`${API_BASE_URL}/admin/add-product`, {
+  addProduct: async (productData) => { // This one already had headers, but let's use the helper for consistency
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/add-product`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to add product');
-    }
-    return data;
+    return res;
   },
 
   uploadProductImage: async (file) => {
     const formData = new FormData();
     formData.append('image', file);
     
-    const res = await fetch(`${API_BASE_URL}/admin/upload-image`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/upload-image`, {
       method: 'POST',
+      headers: {}, // Let browser set Content-Type for FormData
       body: formData,
     });
-    if (!res.ok) throw new Error('Failed to upload image');
-    const data = await res.json();
-    return { imageUrl: data.imageUrl || data.image_url };
+    const data = await res;
+    return { imageUrl: data.imageUrl || data.image_url }; // Assuming res is now parsed JSON
   },
 
   uploadMultipleProductImages: async (files) => {
@@ -60,136 +90,118 @@ const apiClient = {
       formData.append('images', files[i]);
     }
     
-    const res = await fetch(`${API_BASE_URL}/admin/upload-multiple-images`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/upload-multiple-images`, {
       method: 'POST',
+      headers: {}, // Let browser set Content-Type for FormData
       body: formData,
     });
-    if (!res.ok) throw new Error('Failed to upload images');
-    return res.json();
+    return res;
   },
   updateProduct: async (id, productData) => {
-    const res = await fetch(`${API_BASE_URL}/admin/products/${id}`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/products/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(productData),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Failed to update product');
-    }
-    return data;
+    return res;
   },
 
   deleteProduct: async (id) => {
-    const res = await fetch(`${API_BASE_URL}/admin/products/${id}`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/products/${id}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error('Failed to delete product');
-    return res.json();
+    return res;
   },
 
   // Categories
   getCategories: async () => {
-    const res = await fetch(`${API_BASE_URL}/admin/categories`);
-    if (!res.ok) throw new Error('Failed to fetch categories');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/categories`);
+    return res;
   },
 
   // Customers
   getCustomers: async () => {
-    const res = await fetch(`${API_BASE_URL}/admin/customers`);
-    if (!res.ok) throw new Error('Failed to fetch customers');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/customers`);
+    return res;
   },
 
   deleteCustomer: async (id) => {
-    const res = await fetch(`${API_BASE_URL}/admin/customers/${id}`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/customers/${id}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error('Failed to delete customer');
-    return res.json();
+    return res;
   },
   // Orders
   getOrders: async () => {
-    const res = await fetch(`${API_BASE_URL}/admin/orders`);
-    if (!res.ok) throw new Error('Failed to fetch orders');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/orders`);
+    return res;
   },
 
-  updateOrderStatus: async (id, status) => {
-    const res = await fetch(`${API_BASE_URL}/admin/orders/${id}/status`, {
+  updateOrderStatus: async (id, status) => { // This one also had headers, but let's use the helper
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/orders/${id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
-    if (!res.ok) throw new Error('Failed to update order status');
-    return res.json();
+    return res;
   },
 
   getPendingOrdersCount: async () => {
-    const res = await fetch(`${API_BASE_URL}/admin/orders/pending-count`);
-    if (!res.ok) throw new Error('Failed to fetch pending orders count');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/orders/pending-count`);
+    return res;
   },
 
   // Coupons
   getCoupons: async () => {
-    const res = await fetch(`${API_BASE_URL}/admin/coupons`);
-    if (!res.ok) throw new Error('Failed to fetch coupons');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/coupons`);
+    return res;
   },
 
   addCoupon: async (couponData) => {
-    const res = await fetch(`${API_BASE_URL}/admin/coupons`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/coupons`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(couponData),
     });
-    if (!res.ok) throw new Error('Failed to add coupon');
-    return res.json();
+    return res;
   },
 
   updateCouponStatus: async (id, active) => {
-    const res = await fetch(`${API_BASE_URL}/admin/coupons/${id}/status`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/coupons/${id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active }),
     });
-    if (!res.ok) throw new Error('Failed to update coupon status');
-    return res.json();
+    return res;
   },
 
   deleteCoupon: async (id) => {
-    const res = await fetch(`${API_BASE_URL}/admin/coupons/${id}`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/coupons/${id}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error('Failed to delete coupon');
-    return res.json();
+    return res;
   },
 
   // Reviews
   getReviews: async () => {
-    const res = await fetch(`${API_BASE_URL}/admin/reviews`);
-    if (!res.ok) throw new Error('Failed to fetch reviews');
-    return res.json();
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/reviews`);
+    return res;
   },
 
   updateReviewStatus: async (id, approved) => {
-    const res = await fetch(`${API_BASE_URL}/admin/reviews/${id}/status`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/reviews/${id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ approved }),
     });
-    if (!res.ok) throw new Error('Failed to update review status');
-    return res.json();
+    return res;
   },
 
   deleteReview: async (id) => {
-    const res = await fetch(`${API_BASE_URL}/admin/reviews/${id}`, {
+    const res = await fetchWithAuth(`${API_BASE_URL}/admin/reviews/${id}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error('Failed to delete review');
-    return res.json();
+    return res;
   },
 };
 

@@ -5,9 +5,11 @@ import {
   HiOutlineTicket, HiOutlineShoppingCart, HiOutlineUsers, 
   HiOutlineStar, HiOutlinePhotograph, HiOutlineLogout
 } from "react-icons/hi";
+import { useAuth } from './AuthContext';
 import apiClient from '../api/apiClient';
 
 const Sidebar = ({ isOpen, onClose }) => {
+  const { logout } = useAuth();
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
@@ -19,7 +21,6 @@ const Sidebar = ({ isOpen, onClose }) => {
     { name: 'Orders', icon: <HiOutlineShoppingCart />, path: '/orders' },
     { name: 'Customers', icon: <HiOutlineUsers />, path: '/customers' },
     { name: 'Reviews', icon: <HiOutlineStar />, path: '/reviews' },
-    { name: 'Media', icon: <HiOutlinePhotograph />, path: '/media' },
   ];
 
   const [pendingOrders, setPendingOrders] = useState(0);
@@ -41,7 +42,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   }, []);
 
   const handleLogout = () => {
-    alert('Logout functionality - integrate with your auth system');
+    logout();
   };
 
   return (
